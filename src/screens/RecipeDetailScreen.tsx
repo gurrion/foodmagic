@@ -5,266 +5,332 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  SafeAreaView,
+  Share,
   Alert,
 } from 'react-native';
 import { useStore } from '../store/useStore';
+import { Theme } from '../theme/theme';
+import { Badge, Card, Button } from '../components';
 
 export default function RecipeDetailScreen({ route, navigation }: any) {
   const { recipe } = route.params;
   const { favoriteRecipes, toggleFavorite } = useStore();
-
   const isFavorite = favoriteRecipes.includes(recipe.id);
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return '#00b894';
-      case 'medium': return '#fdcb6e';
-      case 'hard': return '#e74c3c';
-      default: return '#636e72';
+  const getDifficultyBadge = (difficulty: string) => {
+    const map: Record<string, { text: string; variant: 'success' | 'warning' | 'danger' }> = {
+      easy: { text: 'Fácil', variant: 'success' },
+      medium: { text: 'Medio', variant: 'warning' },
+      hard: { text: 'Difícil', variant: 'danger' },
+    };
+    return map[difficulty] || { text: difficulty, variant: 'info' as const };
+  };
+
+  const shareRecipe = async () => {
+    try {
+      await Share.share({
+        message: `¡Mira esta receta de FoodMagic!\n\n${recipe.title}\n\nIngredientes:\n${recipe.ingredients.join('\n')}\n\nDescarga FoodMagic: https://foodmagic.app`,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo compartir la receta');
     }
   };
 
-  const getDifficultyText = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'Fácil';
-      case 'medium': return 'Medio';
-      case 'hard': return 'Difícil';
-      default: return '';
-    }
-  };
-
-  const shareRecipe = () => {
-    Alert.alert(
-      '📤 Compartir',
-      'Próximamente: podrás compartir recetas en redes sociales'
-    );
+  const cookMode = () => {
+    Alert.alert('👨‍🍳 Modo Chef', 'Próximamente: Modo manos libres con audio');
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => toggleFavorite(recipe.id)}>
-              <Text style={styles.actionText}>{isFavorite ? '❤️' : '🤍'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={shareRecipe} style={styles.shareButton}>
-              <Text style={styles.actionText}>📤</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <View style={styles.headerButton}>
+            <Text style={styles.headerButtonText}>←</Text>
           </View>
+        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => toggleFavorite(recipe.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerButtonText}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={shareRecipe}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerButtonText}>📤</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Recipe info */}
-        <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Title Card */}
+        <Card elevation="sm" padding="lg" style={styles.titleCard}>
           <Text style={styles.title}>{recipe.title}</Text>
 
           <View style={styles.metaRow}>
-            <View style={styles.metaTag}>
-              <Text style={[styles.metaText, { color: getDifficultyColor(recipe.difficulty) }]}>
-                {getDifficultyText(recipe.difficulty)}
-              </Text>
-            </View>
-            <View style={styles.metaTag}>
-              <Text style={styles.metaText}>⏱️ {recipe.cookingTime}</Text>
-            </View>
+            <Badge {...getDifficultyBadge(recipe.difficulty)} />
+            <Badge text={`⏱️ ${recipe.cookingTime}`} variant="info" />
+            {recipe.calories && (
+              <Badge text={`🔥 ${recipe.calories} cal`} variant="primary" />
+            )}
           </View>
 
-          {/* Ingredients */}
-          <Text style={styles.sectionTitle}>Ingredientes</Text>
-          <View style={styles.section}>
+          {recipe.description && (
+            <Text style={styles.description}>{recipe.description}</Text>
+          )}
+        </Card>
+
+        {/* Ingredients */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🥘 Ingredientes</Text>
+          <Card padding="md">
             {recipe.ingredients.map((ingredient: string, index: number) => (
               <View key={index} style={styles.listItem}>
-                <Text style={styles.listBullet}>•</Text>
+                <View style={styles.checkCircle}>
+                  <Text style={styles.checkNumber}>{index + 1}</Text>
+                </View>
                 <Text style={styles.listText}>{ingredient}</Text>
               </View>
             ))}
-          </View>
+          </Card>
+        </View>
 
-          {/* Instructions */}
-          <Text style={styles.sectionTitle}>Instrucciones</Text>
-          <View style={styles.section}>
-            {recipe.instructions.map((step: string, index: number) => (
-              <View key={index} style={styles.stepItem}>
+        {/* Instructions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📝 Instrucciones</Text>
+          {recipe.instructions.map((step: string, index: number) => (
+            <Card key={index} elevation="xs" padding="md" style={styles.stepCard}>
+              <View style={styles.stepHeader}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>{index + 1}</Text>
                 </View>
-                <Text style={styles.stepText}>{step}</Text>
+                <Text style={styles.stepTitle}>Paso {index + 1}</Text>
               </View>
-            ))}
-          </View>
-
-          {/* Tips */}
-          <View style={styles.tipsBox}>
-            <Text style={styles.tipsTitle}>💡 Tip</Text>
-            <Text style={styles.tipsText}>
-              No tienes exactamente estos ingredientes? Pregúntale al Chef en el chat si puedes sustituirlos.
-            </Text>
-          </View>
+              <Text style={styles.stepText}>{step}</Text>
+            </Card>
+          ))}
         </View>
+
+        {/* Tips */}
+        <Card
+          variant="flat"
+          padding="md"
+          style={styles.tipsCard}
+        >
+          <View style={styles.tipsHeader}>
+            <Text style={styles.tipsEmoji}>💡</Text>
+            <Text style={styles.tipsTitle}>Tip del Chef</Text>
+          </View>
+          <Text style={styles.tipsText}>
+            ¿No tienes exactamente estos ingredientes? Pregúntale al Chef en el chat si puedes sustituirlos.
+          </Text>
+        </Card>
+
+        {/* Footer Spacer */}
+        <View style={styles.footerSpacer} />
       </ScrollView>
 
-      {/* CTA */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.chatButton}
+      {/* Floating Action Buttons */}
+      <View style={styles.fabContainer}>
+        <Button
+          title="👨‍🍳 Modo Chef"
+          onPress={cookMode}
+          variant="secondary"
+          style={styles.fabSecondary}
+        />
+        <Button
+          title="💬 Preguntar"
           onPress={() => navigation.navigate('Chat')}
-        >
-          <Text style={styles.chatButtonText}>💬 Pregúntale al Chef</Text>
-        </TouchableOpacity>
+          variant="primary"
+          style={styles.fabPrimary}
+        />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Theme.colors.background.light,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#fff',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.surface.light,
     borderBottomWidth: 1,
-    borderBottomColor: '#dfe6e9',
+    borderBottomColor: Theme.colors.neutral[200],
   },
-  backText: {
-    fontSize: 24,
-    color: '#6c5ce7',
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.neutral[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerButtonText: {
+    fontSize: 20,
+    color: Theme.colors.neutral[700],
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 15,
+    gap: Theme.spacing.sm,
   },
-  actionText: {
-    fontSize: 24,
+  scrollView: {
+    flex: 1,
   },
-  shareButton: {
-    marginLeft: 10,
+  scrollContent: {
+    paddingBottom: Theme.spacing.xxxl,
   },
-  content: {
-    padding: 20,
+  titleCard: {
+    margin: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3436',
-    marginBottom: 15,
+    fontSize: Theme.typography.fontSize['3xl'],
+    fontWeight: 'bold' as const,
+    color: Theme.colors.neutral[800],
+    marginBottom: Theme.spacing.md,
+    lineHeight: Theme.typography.lineHeight.tight,
   },
   metaRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 25,
+    flexWrap: 'wrap',
+    gap: Theme.spacing.xs,
+    marginBottom: Theme.spacing.md,
   },
-  metaTag: {
-    padding: 8,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-    backgroundColor: '#dfe6e9',
-  },
-  metaText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2d3436',
-    marginBottom: 12,
+  description: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.neutral[600],
+    lineHeight: Theme.typography.lineHeight.relaxed,
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    paddingHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: Theme.typography.fontSize.xl,
+    fontWeight: 'bold' as const,
+    color: Theme.colors.neutral[800],
+    marginBottom: Theme.spacing.md,
   },
   listItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
   },
-  listBullet: {
-    fontSize: 18,
-    color: '#6c5ce7',
-    marginRight: 10,
-    marginTop: 2,
-  },
-  listText: {
-    fontSize: 16,
-    color: '#2d3436',
-    flex: 1,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  stepNumber: {
+  checkCircle: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: '#6c5ce7',
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.primary[100],
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
+    marginRight: Theme.spacing.md,
+  },
+  checkNumber: {
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: 'bold' as const,
+    color: Theme.colors.primary[700],
+  },
+  listText: {
+    flex: 1,
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.neutral[800],
+    lineHeight: Theme.typography.lineHeight.relaxed,
+  },
+  stepCard: {
+    marginBottom: Theme.spacing.md,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.primary[600],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.sm,
   },
   stepNumberText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: 'bold' as const,
+  },
+  stepTitle: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: 'bold' as const,
+    color: Theme.colors.neutral[800],
   },
   stepText: {
-    fontSize: 16,
-    color: '#2d3436',
-    flex: 1,
-    lineHeight: 22,
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.neutral[700],
+    lineHeight: Theme.typography.lineHeight.relaxed,
+    paddingLeft: 40,
   },
-  tipsBox: {
-    backgroundColor: '#e3f2fd',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+  tipsCard: {
+    marginHorizontal: Theme.spacing.lg,
+    backgroundColor: Theme.colors.primary[50],
     borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
+    borderLeftColor: Theme.colors.primary[500],
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  tipsEmoji: {
+    fontSize: 24,
+    marginRight: Theme.spacing.sm,
   },
   tipsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1976d2',
-    marginBottom: 8,
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: 'bold' as const,
+    color: Theme.colors.primary[800],
   },
   tipsText: {
-    fontSize: 14,
-    color: '#424242',
-    lineHeight: 20,
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.primary[900],
+    lineHeight: Theme.typography.lineHeight.relaxed,
   },
-  footer: {
-    padding: 20,
-    backgroundColor: '#fff',
+  footerSpacer: {
+    height: Theme.spacing.xxl,
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.surface.light,
     borderTopWidth: 1,
-    borderTopColor: '#dfe6e9',
+    borderTopColor: Theme.colors.neutral[200],
+    gap: Theme.spacing.sm,
   },
-  chatButton: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#fdcb6e',
-    alignItems: 'center',
-    shadowColor: '#fdcb6e',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+  fabSecondary: {
+    flex: 1,
   },
-  chatButtonText: {
-    color: '#2d3436',
-    fontSize: 16,
-    fontWeight: 'bold',
+  fabPrimary: {
+    flex: 2,
   },
 });
