@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String?
+  avatar        String?
+  isPremium     Boolean   @default(false)
+  premiumUntil  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  favoriteRecipes FavoriteRecipe[]
+  generatedRecipes GeneratedRecipe[]
+  chatMessages    ChatMessage[]
+  searchHistory   SearchHistory[]
+  sharedRecipes   SharedRecipe[] @relation("SharedByUser")
+
+  @@index([email])
+  @@map("users")
+}
+
+model Recipe {
+  id            String   @id @default(uuid())
+  title         String
+  ingredients   String[] // JSON array
+  instructions  String[] // JSON array
+  cookingTime   String
+  difficulty    String   // easy, medium, hard
+  mode          String   // normal, emergency
+  isPublic      Boolean  @default(false)
+  likes         Int      @default(0)
+  shares        Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  generatedRecipes GeneratedRecipe[]
+  favoriteRecipes  FavoriteRecipe[]
+  sharedRecipes    SharedRecipe[]
+
+  @@index([mode, isPublic])
+  @@index([likes])
+  @@map("recipes")
+}
+
+model GeneratedRecipe {
+  id            String   @id @default(uuid())
+  userId        String
+  recipeId      String
+  ingredients   String[] // Los ingredientes que el usuario tenía
+  createdAt     DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([recipeId])
+  @@map("generated_recipes")
+}
+
+model FavoriteRecipe {
+  id        String   @id @default(uuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+  @@map("favorite_recipes")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  role      String   // user, assistant
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model SearchHistory {
+  id         String   @id @default(uuid())
+  userId     String
+  ingredients String[] // JSON array
+  mode       String   // normal, emergency
+  resultsCount Int    // Cuántas recetas se generaron
+  createdAt  DateTime @default(now())
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("search_history")
+}
+
+model SharedRecipe {
+  id        String   @id @default(uuid())
+  recipeId  String
+  userId    String
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user   User   @relation("SharedByUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+  @@index([userId, createdAt])
+  @@map("shared_recipes")
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  eventType String   // search, view_recipe, chat, share, ad_view
+  eventData String?  // JSON string with additional data
+  createdAt DateTime @default(now())
+
+  @@index([userId, eventType, createdAt])
+  @@index([eventType, createdAt])
+  @@map("analytics_events")
+}
